@@ -41,7 +41,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: artifacts/ape
-          key: ape-normal-1-${{ runner.os }}-${{ hashFiles('scripts/ape/**', 'scripts/core/sources.lock.json', 'src/audio/ape-*.js') }}
+          key: ape-normal-1-${{ runner.os }}-${{ hashFiles('scripts/ape/**', 'scripts/core/sources.lock.json', 'src/audio/ape-*.js', 'src/audio/limits.js') }}
       - name: Build official-source APE encoder
         if: steps.ape-cache.outputs.cache-hit != 'true'
         run: npm run build:ape
