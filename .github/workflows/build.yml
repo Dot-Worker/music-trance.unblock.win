@@ -1,0 +1,65 @@
+name: Build and deploy Music Trance
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: music-trance-pages-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --registry=https://registry.npmjs.org
+      - run: npm test
+      - name: Cache only our own verified binary and corresponding-source materials
+        id: core-cache
+        uses: actions/cache@v4
+        with:
+          path: artifacts/core
+          key: audio-lgpl-1-${{ runner.os }}-${{ hashFiles('scripts/core/**', 'scripts/test-wasm.mjs', 'src/audio/presets.js', 'src/audio/probe.js') }}
+      - name: Install build and synthetic-fixture prerequisites
+        run: sudo apt-get update && sudo apt-get install -y build-essential autoconf automake libtool pkg-config python3 ffmpeg
+      - name: Build pinned LGPL-only audio core and actual source/relink archive
+        if: steps.core-cache.outputs.cache-hit != 'true'
+        run: npm run build:core
+      - name: Independently recheck codecs, license and configuration on cache hits too
+        run: npm run test:wasm
+      - name: Build static site (fails closed unless source and binary digests match)
+        run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verified-lgpl-static-site
+          path: dist
+          retention-days: 7
+          if-no-files-found: error
+      - name: Upload verified static Pages artifact
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist
+
+  deploy:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy only after tests and corresponding-source checks
+        id: deployment
+        uses: actions/deploy-pages@v4
+
