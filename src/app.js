@@ -83,7 +83,7 @@ nodes['download-all'].addEventListener('click',async()=>{
  if(busy||zipBusy)return;const outputs=queue.filter(item=>item.status==='done').map(({outputName,blob})=>({outputName,blob}));if(!outputs.length)return;
  revokeArchives();zipBusy=true;zipController=new AbortController();const current=zipController,run=generation;render();
  try{const archive=await createZipArchive(outputs,{signal:current.signal});if(run!==generation||current.signal.aborted)return;
- const url=URL.createObjectURL(archive);archiveURLs.add(url);save(url,'music-trance-converted.zip');setTimeout(()=>{URL.revokeObjectURL(url);archiveURLs.delete(url);},60000);notices('ZIP 已交给浏览器下载。下载后可释放队列结果。');
+ const url=URL.createObjectURL(archive);archiveURLs.add(url);save(url,'music-trance.zip');setTimeout(()=>{URL.revokeObjectURL(url);archiveURLs.delete(url);},60000);notices('ZIP 已交给浏览器下载。下载后可释放队列结果。');
  }catch(error){if(run===generation&&!current.signal.aborted)notices(error.message||'打包失败，请逐首下载。');}finally{if(zipController===current){zipController=null;zipBusy=false;render();}}
 });
 nodes.demo.addEventListener('click',async()=>{if(busy||zipBusy||demoBusy)return;demoBusy=true;const run=generation;render();try{const response=await fetch(base('demo/plain.wav'));if(!response.ok)throw new Error('示例加载失败');const blob=await response.blob();if(run!==generation)return;addFiles([new File([blob],'demo-440hz.wav',{type:'audio/wav'})]);notices('已添加本站 440 Hz 合成测试音（非真实音乐、非加密文件），用于体验本地转码与下载。');}catch{if(run===generation)notices('无法加载本站合成示例，请选择本地文件。');}finally{demoBusy=false;render();}});

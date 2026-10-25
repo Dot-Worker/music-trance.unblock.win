@@ -5,8 +5,8 @@ export function safeOutputName(input, extension, used=new Set()) {
   const ext=String(extension||'bin').replace(/[^a-z0-9]/gi,'').toLowerCase().slice(0,12)||'bin';
   let stem=String(input||'audio').split(/[\\/]/).pop().replace(/\.[^.]*$/,'').replace(/[<>:"/\\|?*\u0000-\u001f\u007f]/g,'_').replace(/^[.\s]+|[.\s]+$/g,'').slice(0,100)||'audio';
   if (/^(con|prn|aux|nul|com[0-9]|lpt[0-9])(?:\.|$)/i.test(stem)) stem=`_${stem}`;
-  let name=`${stem}-converted.${ext}`,i=2;
-  while(used.has(name.toLocaleLowerCase())) name=`${stem}-converted-${i++}.${ext}`;
+  let name=`${stem}.${ext}`,i=2;
+  while(used.has(name.toLocaleLowerCase())) name=`${stem}-${i++}.${ext}`;
   used.add(name.toLocaleLowerCase()); return name;
 }
 export function validateAddition(existing, incoming) {

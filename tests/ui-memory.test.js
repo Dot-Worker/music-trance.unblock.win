@@ -19,7 +19,7 @@ test('desktop limits bound file, input batch, result accumulation and ZIP indepe
 });
 test('ZIP streams bounded slices with backpressure and creates valid archive without whole-Blob reads',async()=>{
  const bytes=new Uint8Array(ZIP_CHUNK_BYTES*2+19).fill(7),blob=new Blob([bytes]),stats=[];let slices=0;
- const output={outputName:'音频-converted.wav',blob:{size:blob.size,slice(...args){slices++;return blob.slice(...args);},arrayBuffer(){throw new Error('Must not read whole blob');}}};
+ const output={outputName:'音频.wav',blob:{size:blob.size,slice(...args){slices++;return blob.slice(...args);},arrayBuffer(){throw new Error('Must not read whole blob');}}};
  const archive=await createZipArchive([output],{workerFactory:()=>fakeWorker(stats)});const unzipped=unzipSync(new Uint8Array(await archive.arrayBuffer()));assert.deepEqual(unzipped[output.outputName],bytes);assert.equal(slices,3);assert.ok(stats.filter(m=>m.type==='chunk').every(m=>m.length<=ZIP_CHUNK_BYTES));
 });
 test('repeated ZIP cancellation terminates worker, rejects stale completion and permits a fresh retry',async()=>{
