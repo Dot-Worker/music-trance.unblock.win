@@ -34,7 +34,7 @@ the visible “Audio core source” footer link (a SHA256-named archive in the s
 The SHA256-named `verified-build-….json` beside the core gives digests for the generated
 core and source archive. The source lock is `scripts/core/sources.lock.json`.
 The build checks reported LGPL licensing and disabled GPL/network options,
-then verifies all four real encoding outputs before generating that manifest.
+then verifies the generic format/rate/precision matrix before generating that manifest.
 The vendor build fails closed without the matching source/binary manifest.
 
 Recipients may rebuild/replace the separately loaded core and debug those
@@ -42,6 +42,22 @@ modifications. No long-term source-offer obligation is promised: actual sources
 and relink materials accompany the binary. Full licenses and component notices
 are preserved within the source archive, with readable LGPL text under licenses/.
 See scripts/core/README.md in the source archive for rebuild/relink instructions.
+
+## Monkey's Audio APE encoder — separate BSD module
+
+APE output uses the official Monkey's Audio SDK 13.43 (BSD-3-Clause), compiled
+from SHA256-pinned source with a small documented synchronous-scheduling patch.
+Only normal compression (2000), integer PCM16/24 and mono/stereo are exposed.
+The normal level is lossless; higher compression levels are not higher audio quality.
+The experimental Insane level is not exposed. Every exported APE is decoded by
+our separately built FFmpeg engine and its prepared PCM bytes are SHA256-checked
+locally; this does not restore information lost before conversion.
+
+The visible “APE 源码” footer link downloads the SHA256-named preferred-source,
+patch/build recipe and license archive from the same host as the content-hashed
+APE JS/WASM. The readable BSD license is in `licenses/MonkeysAudio-BSD.txt`.
+Original official archive: https://monkeysaudio.com/files/MAC_1343_SDK.zip
+SHA256: `3fd1c60f994daba536902f30b1bebc2235099c8b8a039d8b37d9d27d4827e0ca`.
 
 ## Demo
 

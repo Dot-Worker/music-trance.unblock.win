@@ -1,27 +1,30 @@
-import { conversionPlan, outputName } from './presets.js';
-export { PRESETS, conversionPlan, outputName } from './presets.js';
+import { conversionPlan, outputName, audioInfoFromProbe } from './presets.js';
+export { PRESETS, conversionPlan, outputName, audioInfoFromProbe } from './presets.js';
 export { sniffAudio, parseWav } from './probe.js';
-export const ENGINE_DOWNLOAD_BYTES = 2571734;
+export const ENGINE_DOWNLOAD_BYTES = typeof __AUDIO_DOWNLOAD_BYTES__==='undefined'?0:__AUDIO_DOWNLOAD_BYTES__;
 export const MAX_AUDIO_BYTES = 64 * 1024 * 1024;
 const coreDirectory=typeof __AUDIO_CORE_DIRECTORY__==='undefined'?'vendor/core-not-built':__AUDIO_CORE_DIRECTORY__;
 const wrapperDirectory=typeof __AUDIO_WRAPPER_DIRECTORY__==='undefined'?'vendor/ffmpeg-0.12.15-test':__AUDIO_WRAPPER_DIRECTORY__;
+const apeDirectory=typeof __APE_CORE_DIRECTORY__==='undefined'?'vendor/ape-not-built':__APE_CORE_DIRECTORY__;
+export function apeSourceDownloadURL(){return runtimeAsset(typeof __APE_SOURCE_PATH__==='undefined'?'ape-source-not-built':__APE_SOURCE_PATH__);}
 export function sourceDownloadURL(){ return runtimeAsset(typeof __AUDIO_SOURCE_PATH__==='undefined'?'source-not-built':__AUDIO_SOURCE_PATH__); }
 const aborted=()=>new DOMException('Conversion canceled.','AbortError');
 export function runtimeAsset(path) {
  return new URL(`${import.meta.env.BASE_URL}${path}`,document.baseURI).href;
 }
 /** Sequential engine: no network uploads, no shared memory or COOP/COEP required. */
-export function createAudioEngine({createFFmpeg, assetURL=runtimeAsset}={}) {
- let ffmpeg=null, busy=false, generation=0;
- const cancel=()=>{ generation++; if(ffmpeg) { ffmpeg.terminate(); ffmpeg=null; } };
+export function createAudioEngine({createFFmpeg, assetURL=runtimeAsset, encodeApeImpl}={}) {
+ let ffmpeg=null, busy=false, generation=0, apeController=null;
+ const cancel=()=>{ generation++; apeController?.abort();apeController=null; if(ffmpeg) { ffmpeg.terminate(); ffmpeg=null; } };
  return {
   cancel, dispose:cancel,
-  async convert(bytes,{preset,name='audio',signal,onProgress=()=>{},onStatus=()=>{}}={}) {
+  async convert(bytes,{preset,quality,sampleRate='source',name='audio',signal,onProgress=()=>{},onStatus=()=>{},onSourceInfo=()=>{}}={}) {
    if(busy) throw new Error('A conversion is already running. Wait for it or cancel it first.');
    if(signal?.aborted) throw aborted();
    if(!(bytes instanceof Uint8Array)||!bytes.length) throw new Error('The audio file is empty or invalid.');
    if(bytes.byteLength>MAX_AUDIO_BYTES) throw new Error('This browser build limits each input to 64 MiB to reduce memory failures.');
-   const plan=conversionPlan(preset);
+   let plan;
+   const files=new Set(['input.bin','source-probe.json','output-probe.json']);
    busy=true;
    const epoch=generation;
    let active=null;
@@ -30,7 +33,7 @@ export function createAudioEngine({createFFmpeg, assetURL=runtimeAsset}={}) {
    try {
     signal?.addEventListener('abort',abort,{once:true});
     if(!ffmpeg) {
-     onStatus('Loading local conversion engine (~2.5 MiB on first use)…');
+     onStatus(`Loading local conversion engine (~${(ENGINE_DOWNLOAD_BYTES/1024/1024).toFixed(1)} MiB on first use)…`);
      const factory=createFFmpeg || (async()=>{const {FFmpeg}=await import(/* @vite-ignore */ assetURL(`${wrapperDirectory}/index.js`));return new FFmpeg();});
      active=await factory();
      if(signal?.aborted || epoch!==generation) { active.terminate(); throw aborted(); }
@@ -41,13 +44,58 @@ export function createAudioEngine({createFFmpeg, assetURL=runtimeAsset}={}) {
     active.on('progress',progress);
     onStatus('Converting audio locally…');
     await active.writeFile('input.bin',bytes);
+    const probe=async(path,destination)=>{
+     const status=await active.ffprobe(['-v','error','-protocol_whitelist','file,pipe','-select_streams','a:0','-show_entries','stream=codec_type,codec_name,sample_rate,channels,sample_fmt,bits_per_raw_sample,bits_per_sample,bit_rate,channel_layout','-of','json','-o',destination,path],30000);
+     if(status!==0) throw new Error('读取音轨信息超时或失败。');
+     const raw=await active.readFile(destination,'utf8');
+     return audioInfoFromProbe(JSON.parse(typeof raw==='string'?raw:new TextDecoder().decode(raw)));
+    };
+    onStatus('正在读取音源参数…');
+    const sourceInfo=await probe('input.bin','source-probe.json');
+    if(signal?.aborted || epoch!==generation) throw aborted();
+    onSourceInfo(sourceInfo);
+    plan=conversionPlan(preset,{quality,sampleRate},sourceInfo);files.add(plan.output);
+    onStatus('正在本地转码…');
     const code=await active.exec(plan.args,600000);
     if(code!==0) throw new Error('The audio could not be decoded or encoded. It may be damaged, unsupported, or too large for this browser.');
-    const result=await active.readFile(plan.output);
+    if(preset==='ape') {
+     const {validateApeWav}=await import('./ape-wav.js');
+     const digest=async wav=>{const description=validateApeWav(wav);if(!globalThis.crypto?.subtle)throw new Error('APE 无损校验需要支持 WebCrypto 的 HTTPS 浏览器。');const hash=new Uint8Array(await crypto.subtle.digest('SHA-256',wav.subarray(description.dataOffset,description.dataOffset+description.dataBytes)));return {description,hash};};
+     let prepared=await active.readFile(plan.output);
+     if(prepared.byteLength>=134217728-65536)throw new Error('APE 中间音频超过 128 MiB 安全限制，请选择较短音频。');
+     const reference=await digest(prepared);
+     if(signal?.aborted||epoch!==generation||active!==ffmpeg)throw aborted();
+     if(reference.description.sampleRate!==plan.expected.sampleRate||reference.description.channels!==plan.expected.channels||reference.description.bits!==plan.expected.bitsPerSample)throw new Error('APE 中间音频参数不匹配。');
+     apeController=new AbortController();
+     if(signal?.aborted||epoch!==generation)throw aborted();
+     onStatus('正在本地编码 APE…');
+     const encode=encodeApeImpl||(await import('./ape-encoder.js')).encodeApe;
+     const ape=await encode(prepared,{signal:apeController.signal,onStatus,coreURL:assetURL(`${apeDirectory}/ape.js`),wasmURL:assetURL(`${apeDirectory}/ape.wasm`)});
+     apeController=null;prepared=null;
+     if(signal?.aborted||epoch!==generation)throw aborted();
+     if(!(ape instanceof Uint8Array)||ape.byteLength<4||ape.byteLength>=134217728-65536)throw new Error('APE 输出为空或超过 128 MiB 安全限制。');
+     await active.deleteFile(plan.output);files.delete(plan.output);
+     files.add(plan.finalOutput);await active.writeFile(plan.finalOutput,ape);
+     onStatus('正在校验 APE 无损音频…');
+     const checked='ape-check.wav';files.add(checked);
+     const status=await active.exec(['-protocol_whitelist','file,pipe','-i',plan.finalOutput,'-map','0:a:0','-vn','-map_metadata','-1','-c:a',plan.expected.bitsPerSample===16?'pcm_s16le':'pcm_s24le','-fs','134217728',checked],600000);
+     if(signal?.aborted||epoch!==generation||active!==ffmpeg)throw aborted();
+     if(status!==0)throw new Error('APE 解码校验失败，已拒绝导出。');
+     const decoded=await active.readFile(checked);
+     if(decoded.byteLength>=134217728-65536)throw new Error('APE 校验音频超出安全限制。');
+     const verification=await digest(decoded);
+     if(signal?.aborted||epoch!==generation||active!==ffmpeg)throw aborted();
+     if(verification.description.sampleRate!==reference.description.sampleRate||verification.description.channels!==reference.description.channels||verification.description.bits!==reference.description.bits||verification.description.dataBytes!==reference.description.dataBytes||!reference.hash.every((value,i)=>value===verification.hash[i]))throw new Error('APE 音频与输入 PCM 不一致，已拒绝导出。');
+     await active.deleteFile(checked);files.delete(checked);
+    }
+    const audioInfo=await probe(plan.finalOutput,'output-probe.json');
+    if(audioInfo.sampleRate!==plan.expected.sampleRate||audioInfo.channels!==plan.expected.channels||audioInfo.codec!==plan.expected.codec||(plan.expected.bitsPerSample&&audioInfo.bitsPerSample!==plan.expected.bitsPerSample)) throw new Error('实际输出参数与所选参数不符，已拒绝导出。');
+    if(preset==='mp3'&&audioInfo.bitRate!==Number(plan.quality)*1000) throw new Error('此音源采样率无法达到所选 MP3 码率，请选择 44.1 / 48 kHz。');
+    const result=await active.readFile(plan.finalOutput);
     if(signal?.aborted || epoch!==generation || active!==ffmpeg) throw aborted();
     if(result.byteLength>=134217728-65536) throw new Error('Output exceeds this browser build’s 128 MiB safety limit. Choose MP3/AAC or a shorter source. No truncated output was exported.');
     if(!(result instanceof Uint8Array)||!result.length) throw new Error('The converter returned an empty output.');
-    return {bytes:result,extension:plan.preset.extension,mime:plan.preset.mime,name:outputName(name,plan.preset.extension)};
+    return {bytes:result,extension:plan.preset.extension,mime:plan.preset.mime,name:outputName(name,plan.preset.extension),audioInfo,sourceInfo};
    } catch(error) {
     if(signal?.aborted || epoch!==generation || (active&&active!==ffmpeg)) throw aborted();
     cancel(); // Memory/runtime errors cannot leave a poisoned worker for the next file.
@@ -57,7 +105,7 @@ export function createAudioEngine({createFFmpeg, assetURL=runtimeAsset}={}) {
     if(active===ffmpeg&&active) {
      active.off('progress',progress);
      // Remove even partially written output after a failure; cancellation destroys all MEMFS.
-     const cleanup=await Promise.allSettled(['input.bin',plan.output].map(file=>active.deleteFile(file)));
+     const cleanup=await Promise.allSettled([...files].map(file=>active.deleteFile(file)));
      if(cleanup.some(r=>r.status==='rejected')) cancel();
     }
     busy=false;

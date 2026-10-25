@@ -4,7 +4,7 @@ This core is built from the immutable SHA256-verified sources in `sources.lock.j
 No npm FFmpeg core binary is included. FFmpeg is configured LGPL 2.1-or-later,
 without GPL, version3, nonfree, network or external video libraries. The only
 external codec library is LAME (LGPL). The upstream CLI/JS bridge is pinned;
-`patch.py` removes only unused SDL and postproc link flags. All modifications are
+`patch.py` removes unused SDL/postproc link flags and fixes the upstream JavaScript ffprobe binding to preserve its real C return status. All modifications are
 visible in `build.sh` and `patch.py`; original FFmpeg/LAME/SDK archives are included unchanged. For the bridge, only required src/bind, src/fftools, build and LICENSE files are included, byte-for-byte, with revision and per-file hashes (unrelated example apps and their .npmrc are excluded).
 
 ## Rebuild
@@ -16,8 +16,7 @@ bash scripts/core/build.sh
 ```
 
 The script fetches only pinned archives, verifies hashes, installs/activates the
-pinned official Emscripten3.1.40 SDK, builds LAME/FFmpeg and bridge, runs four actual
-WASM encoding/probe tests plus eighteen decode/resample tests from nine generated synthetic source cases and checks LGPL / disabled GPL and network, then creates
+pinned official Emscripten3.1.40 SDK, builds LAME/FFmpeg and bridge, runs a real WASM encoding/probe matrix covering generic formats, bitrates, source rates/precision, explicit resampling, and mono/multichannel preservation and checks LGPL / disabled GPL and network, then creates
 `artifacts/core/`. The source archive contains the exact input source archives,
 these build/patch scripts, linked Emscripten runtime source, license notices and
 linkable FFmpeg/LAME libraries/objects plus generated configuration. The compiler

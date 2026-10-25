@@ -40,8 +40,8 @@ emconfigure ./configure \
  --enable-demuxer=aac,ape,asf,flac,mov,mp3,ogg,wav \
  --enable-parser=aac,aac_latm,flac,mpegaudio,opus,vorbis \
  --enable-decoder=aac,aac_fixed,alac,ape,flac,mp3,mp3float,opus,vorbis,wmav1,wmav2,wmapro,wmalossless,pcm_s16le,pcm_s24le,pcm_s32le,pcm_f32le,pcm_f64le,pcm_s16be,pcm_s24be,pcm_s32be,pcm_f32be,pcm_f64be,pcm_u8 \
- --enable-encoder=aac,libmp3lame,pcm_s16le --enable-libmp3lame \
- --enable-muxer=ipod,mp4,mp3,wav --enable-filter=abuffer,abuffersink,aformat,anull,aresample \
+ --enable-encoder=aac,libmp3lame,flac,pcm_s16le,pcm_s24le,pcm_s32le,pcm_f32le --enable-libmp3lame \
+ --enable-muxer=ipod,mp4,mp3,wav,flac --enable-filter=abuffer,abuffersink,aformat,anull,aresample \
  --nm=emnm --ar=emar --ranlib=emranlib --cc=emcc --cxx=em++ --objcc=emcc --dep-cc=emcc \
  --extra-cflags="$CFLAGS" --extra-cxxflags="$CXXFLAGS" --extra-ldflags="$LDFLAGS"
 # Fail closed if configure unexpectedly enables restricted functionality.

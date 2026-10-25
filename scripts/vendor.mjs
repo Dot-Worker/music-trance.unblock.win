@@ -9,8 +9,18 @@ const required=['ffmpeg-core.js','ffmpeg-core.wasm','ffmpeg-core.cjs','test-core
 if(!manifest.files || Object.keys(manifest.files).length!==required.length || required.some(f=>!/^([a-f0-9]{64})$/.test(manifest.files[f]||''))) throw Error('Incomplete verified core/source manifest.');
 for(const file of ['scripts/core/build.sh','scripts/core/patch.py','scripts/core/fetch.py','scripts/core/package-source.py','scripts/core/sources.lock.json','scripts/core/README.md']) if(manifest.buildInputs?.[file]!==sha(await readFile(file))) throw Error(`Core recipe changed; rebuild required: ${file}`);
 for(const [file,hash] of Object.entries(manifest.files)) if(sha(await readFile(`artifacts/core/${file}`))!==hash) throw Error(`Core/source integrity failure: ${file}`);
+const apeManifest=JSON.parse(await readFile('artifacts/ape/verified-build.json','utf8'));
+const apeFiles=['ape.js','ape.cjs','ape.wasm','ape-source.tar.gz','LICENSE.MonkeysAudio.txt',...(apeManifest.files?.['MAC_1343_SDK.zip']?['MAC_1343_SDK.zip']:[])];
+if(apeManifest.files?.['MAC_1343_SDK.zip']&&apeManifest.files['MAC_1343_SDK.zip']!=='3fd1c60f994daba536902f30b1bebc2235099c8b8a039d8b37d9d27d4827e0ca')throw Error('Unexpected original SDK archive.');
+if(apeManifest.coreId!=='ape-normal-1'||Object.keys(apeManifest.files||{}).length!==apeFiles.length||apeFiles.some(f=>!/^([a-f0-9]{64})$/.test(apeManifest.files[f]||'')))throw Error('Incomplete APE binary/source manifest.');
+for(const file of apeFiles)if(sha(await readFile(`artifacts/ape/${file}`))!==apeManifest.files[file])throw Error(`APE integrity failure: ${file}`);
+for(const file of ['README.md','build.sh','package.py','patch.py','prepare.py','test.mjs','wrapper.cpp']){const path=`scripts/ape/${file}`;if(apeManifest.buildInputs?.[path]!==sha(await readFile(path)))throw Error(`APE recipe changed: ${path}`);}
 await rm('public/vendor',{recursive:true,force:true});
 const layout=runtimeLayout();
+await mkdir(`public/${layout.apeDirectory}`,{recursive:true});
+for(const file of ['ape.js','ape.wasm','LICENSE.MonkeysAudio.txt'])await copyFile(`artifacts/ape/${file}`,`public/${layout.apeDirectory}/${file}`);
+await copyFile('artifacts/ape/ape-source.tar.gz',`public/${layout.apeSourcePath}`);
+await copyFile('artifacts/ape/verified-build.json',`public/${layout.apeDirectory}/${layout.apeManifestFile}`);
 await mkdir(`public/${layout.coreDirectory}`,{recursive:true});
 for(const file of ['ffmpeg-core.js','ffmpeg-core.wasm']) await copyFile(`artifacts/core/${file}`,`public/${layout.coreDirectory}/${file}`);
 await copyFile('artifacts/core/audio-lgpl-1-corresponding-source.tar.gz',`public/${layout.sourcePath}`);

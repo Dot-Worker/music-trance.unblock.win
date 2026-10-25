@@ -1,18 +1,29 @@
-import {createAudioEngine,ENGINE_DOWNLOAD_BYTES,sourceDownloadURL} from './audio/index.js';
+import {createAudioEngine,ENGINE_DOWNLOAD_BYTES,sourceDownloadURL,apeSourceDownloadURL} from './audio/index.js';
 import {LIMITS,formatBytes,safeOutputName,validateAddition} from './queue/files.js';
+import {QUALITY_OPTIONS,defaultQuality,conversionOptions,audioInfoText} from './queue/options.js';
 const $=id=>document.getElementById(id);
-const nodes=Object.fromEntries(['files','dropzone','queue','queue-count','empty-state','notice','clear','start','start-label','cancel','download-all','ready-count','mode','year','year-field','rate-field','sample-rate','format-label','format-tag','format-description','format-rate','settings-fields','database','db-status','master-key','demo'].map(id=>[id,$(id)]));
+const nodes=Object.fromEntries(['files','dropzone','queue','queue-count','empty-state','notice','clear','start','start-label','cancel','download-all','ready-count','mode','quality','quality-note','sample-rate','format-label','format-tag','format-description','format-rate','settings-fields','database','db-status','master-key','demo'].map(id=>[id,$(id)]));
 let queue=[],busy=false,generation=0,dbBytes=null,dbGeneration=0,worker=null,workerReject=null,controller=null,zipWorker=null,zipReject=null,zipBusy=false,demoBusy=false,engineBusy=false;
 const engine=createAudioEngine();
 const archiveURLs=new Set();
 function revokeArchives(){for(const url of archiveURLs)URL.revokeObjectURL(url);archiveURLs.clear();}
 const base=path=>new URL(`${import.meta.env.BASE_URL}${path}`,document.baseURI).href;
 $('core-source-link').href=sourceDownloadURL();
+$('ape-source-link').href=apeSourceDownloadURL();
 $('license-link').href=base('THIRD_PARTY_NOTICES.txt');
 const notices=message=>{nodes.notice.textContent=message;nodes.notice.hidden=!message;};
-for(let year=2010;year<=2026;year++){const option=document.createElement('option');option.value=year;option.textContent=`${year} 年 · ${year===2010?'957 / PCM 2.1':year<=2017?'958 / PCM 3.1':year<=2020?'9Y0 / PCM 4.0':'9Y0 / PCM 6.0'}`;option.selected=year===2011;nodes.year.append(option);}
-function updatePreset(){const mode=nodes.mode.value,isAAC=nodes.year.value==='2010';nodes['year-field'].hidden=mode!=='vehicle';nodes['rate-field'].hidden=mode!=='vehicle'||isAAC;const info=mode==='copy'?['原格式','NO RE-ENCODING','仅解开容器 · 不重新编码','保留源音频']:mode==='compact'?['MP3','COMPACT AUDIO','目标 320 kbps · 双声道','有损编码']:isAAC?['AAC','AAC-LC AUDIO','目标 320 kbps · 双声道','M4A 容器']:['WAV','PCM AUDIO','16-bit · 双声道',`${Number(nodes['sample-rate'].value)/1000} kHz · 按所选采样率转码`];['format-label','format-tag','format-description','format-rate'].forEach((key,i)=>nodes[key].textContent=info[i]);}
-nodes.mode.addEventListener('change',updatePreset);nodes.year.addEventListener('change',updatePreset);nodes['sample-rate'].addEventListener('change',updatePreset);updatePreset();
+function updatePreset(resetQuality=false){
+ const format=nodes.mode.value,copy=format==='copy';
+ if(resetQuality||!nodes.quality.options.length){nodes.quality.replaceChildren();for(const [value,label] of QUALITY_OPTIONS[format]){const option=document.createElement('option');option.value=value;option.textContent=label;nodes.quality.append(option);}nodes.quality.value=defaultQuality(format);}
+ nodes.quality.disabled=copy;nodes['sample-rate'].disabled=copy;if(copy)nodes['sample-rate'].value='source';
+ const qualityLabel=QUALITY_OPTIONS[format].find(([value])=>value===nodes.quality.value)?.[1]||'';
+ nodes['format-label'].textContent=copy?'原格式':format.toUpperCase();
+ nodes['format-tag'].textContent=copy?'ORIGINAL':['wav','flac','ape'].includes(format)?'LOSSLESS':'AUDIO';
+ nodes['format-description'].textContent=copy?'不重新编码':`${['mp3','aac'].includes(format)?'目标 ':''}${qualityLabel}`;
+ nodes['format-rate'].textContent=copy?'保留音源参数':nodes['sample-rate'].value==='source'?'采样率跟随每个音源':`${Number(nodes['sample-rate'].value)/1000} kHz`;
+ nodes['quality-note'].textContent=copy?'仅解密保留源音频，不重新编码。':format==='ape'?'APE 无损 · 仅单 / 双声道；浮点音源请明确选择 16 / 24-bit。':'更高码率 / 位深不会恢复已丢失的音质。';
+}
+nodes.mode.addEventListener('change',()=>updatePreset(true));nodes.quality.addEventListener('change',()=>updatePreset());nodes['sample-rate'].addEventListener('change',()=>updatePreset());updatePreset(true);
 function makeText(tag,cls,text){const e=document.createElement(tag);e.className=cls;e.textContent=text;return e;}
 function render(){
  const ready=queue.filter(item=>item.status==='done');
@@ -28,6 +39,7 @@ function render(){
  for(const item of queue){const li=document.createElement('li');li.className='queue-item';li.dataset.status=item.status;
   li.append(makeText('span','file-icon',item.status==='done'?'✓':'♫'));
   const body=document.createElement('div');body.append(makeText('h4','file-title',item.file.name));body.append(makeText('div','file-info',`${formatBytes(item.file.size)}${item.outputName?` → ${item.outputName} · ${formatBytes(item.blob.size)}`:''}`));
+  if(item.sourceInfo)body.append(makeText('div','file-info',`音源：${audioInfoText(item.sourceInfo)}`));
   body.append(makeText('p','file-status',item.message||'等待转换'));
   if(item.status==='working'){const progress=document.createElement('progress');progress.className='job-progress';progress.max=1;if(Number.isFinite(item.progress))progress.value=item.progress;progress.setAttribute('aria-label',`${item.file.name} 转换进度`);body.append(progress);}
   li.append(body);const actions=document.createElement('div');actions.className='file-actions';
@@ -35,7 +47,7 @@ function render(){
   const remove=makeText('button','remove','×');remove.type='button';remove.title='移除';remove.setAttribute('aria-label',`移除 ${item.file.name}`);remove.disabled=busy||zipBusy;remove.onclick=()=>{revoke(item);queue=queue.filter(i=>i!==item);render();};actions.append(remove);li.append(actions);nodes.queue.append(li);
  }
 }
-function addFiles(files){if(busy||zipBusy)return;const {accepted,errors}=validateAddition(queue.map(i=>i.file),Array.from(files));for(const file of accepted)queue.push({file,status:'queued',message:'等待转换'});notices(errors.join('\n')||(accepted.length?`已添加 ${accepted.length} 个文件。请确认输出预设后开始转换。`:''));render();}
+function addFiles(files){if(busy||zipBusy)return;const {accepted,errors}=validateAddition(queue.map(i=>i.file),Array.from(files));for(const file of accepted)queue.push({file,status:'queued',message:'等待转换'});notices(errors.join('\n')||(accepted.length?`已添加 ${accepted.length} 个文件。请选择输出格式。`:''));render();}
 nodes.files.addEventListener('change',()=>{addFiles(nodes.files.files);nodes.files.value='';});
 nodes.dropzone.addEventListener('keydown',event=>{if(['Enter',' '].includes(event.key)){event.preventDefault();if(!busy&&!zipBusy)nodes.files.click();}});
 for(const event of ['dragenter','dragover'])nodes.dropzone.addEventListener(event,e=>{e.preventDefault();if(!busy&&!zipBusy)nodes.dropzone.classList.add('drag-over');});
@@ -53,13 +65,13 @@ nodes.start.addEventListener('click',async()=>{
  if(busy||zipBusy||engineBusy)return;const pending=queue.filter(item=>['queued','error','cancelled'].includes(item.status));if(!pending.length)return;
  const key=nodes['master-key'].value.trim();if(key&&!/^[0-9a-f]{64}$/i.test(key)){notices('数据库主密钥必须是 64 位十六进制字符，或留空。');nodes['master-key'].focus();return;}
  const run=++generation;busy=true;controller=new AbortController();const signal=controller.signal;
- const preset=nodes.mode.value==='copy'?'copy':nodes.mode.value==='compact'?'mp3-compact':nodes.year.value==='2010'?'aac-2010':`wav-${nodes['sample-rate'].value}`;
+ const options=conversionOptions(nodes.mode.value,nodes.quality.value,nodes['sample-rate'].value),preset=options.preset;
  const names=new Set(queue.filter(i=>i.outputName).map(i=>i.outputName.toLocaleLowerCase()));notices('转换在本地顺序执行；请保持页面打开。');render();
  for(const item of pending){if(run!==generation)break;item.status='working';item.message='正在读取并解密…';item.progress=undefined;render();
   try{const input=await item.file.arrayBuffer();if(run!==generation)break;const decoded=await decrypt(input,item.file,key);if(run!==generation)break;
    let output={bytes:decoded.audio,extension:decoded.extension,mime:'application/octet-stream'};
-   if(preset!=='copy'){item.message='正在加载 / 运行本地音频引擎…';render();engineBusy=true;try{output=await engine.convert(decoded.audio,{preset,name:item.file.name,signal,onProgress:progress=>{if(run!==generation)return;item.progress=typeof progress==='number'?Math.max(0,Math.min(1,progress)):undefined;render();},onStatus:status=>{if(run!==generation)return;item.message=String(status).startsWith('Loading')?`正在加载本站音频引擎（首次约 ${(ENGINE_DOWNLOAD_BYTES/1024/1024).toFixed(1)} MiB）…`:'正在本地转码…';render();}});}finally{engineBusy=false;render();}}
-   if(run!==generation)break;const blob=new Blob([output.bytes],{type:output.mime});if(!blob.size)throw new Error('引擎返回了空文件，未生成下载。');item.blob=blob;item.outputName=safeOutputName(item.file.name,output.extension,names);item.url=URL.createObjectURL(blob);item.status='done';item.message=preset==='copy'?'解密完成 · 保留源音频':'转换完成 · 可下载';item.progress=1;
+   if(preset!=='copy'){item.message='正在加载 / 运行本地音频引擎…';render();engineBusy=true;try{output=await engine.convert(decoded.audio,{...options,name:item.file.name,signal,onSourceInfo:info=>{if(run!==generation)return;item.sourceInfo=info;render();},onProgress:progress=>{if(run!==generation)return;item.progress=typeof progress==='number'?Math.max(0,Math.min(1,progress)):undefined;render();},onStatus:status=>{if(run!==generation)return;item.message=String(status).startsWith('Loading')?`正在加载本站音频引擎（首次约 ${(ENGINE_DOWNLOAD_BYTES/1024/1024).toFixed(1)} MiB）…`:'正在本地转码…';render();}});}finally{engineBusy=false;render();}}
+   if(run!==generation)break;if(output.audioInfo)item.outputInfo=output.audioInfo;const blob=new Blob([output.bytes],{type:output.mime});if(!blob.size)throw new Error('引擎返回了空文件，未生成下载。');item.blob=blob;item.outputName=safeOutputName(item.file.name,output.extension,names);item.url=URL.createObjectURL(blob);item.status='done';item.message=preset==='copy'?'解密完成 · 保留源音频':`转换完成${audioInfoText(item.outputInfo)?` · ${audioInfoText(item.outputInfo)}`:''}`;item.progress=1;
   }catch(error){if(run!==generation)break;item.status='error';item.progress=undefined;item.message=error.code==='NEED_QQ_EKEY'?'NEED_QQ_EKEY：此 QQ 文件缺少必要 ekey，当前无法解密。':`${error.code?`${error.code}：`:''}${error.message||'转换失败，请检查文件格式。'}`;}
   render();
  }

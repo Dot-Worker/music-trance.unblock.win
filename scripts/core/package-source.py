@@ -26,8 +26,11 @@ with tarfile.open(archive,'w:gz') as tar:
         data=(json.dumps(manifest,indent=2)+'\n').encode();entry=tarfile.TarInfo('.core-build/prepared-bridge.json');entry.size=len(data);tar.addfile(entry,io.BytesIO(data))
     for path in (ROOT/'scripts/core').iterdir():
         if path.suffix in ('.py','.sh','.json','.md'): safe_add(tar,path,'scripts/core/'+path.name)
-    for relative in ['LICENSE','scripts/test-wasm.mjs','src/audio/presets.js','src/audio/probe.js','public/demo/plain.wav']:
+    for relative in ['LICENSE','scripts/test-wasm.mjs','public/demo/plain.wav']:
         safe_add(tar,ROOT/relative,relative)
+    # Ship the complete own audio-module graph, including lazy worker helpers.
+    for path in sorted((ROOT/'src/audio').glob('*.js')):
+        safe_add(tar,path,'src/audio/'+path.name)
     safe_add(tar,WORK/'link-core.sh','relink/link-core.sh')
     # Linkable libraries/objects and generated configuration support rebuilding/relinking a modified library.
     source=WORK/'sources/ffmpeg'
