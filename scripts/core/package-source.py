@@ -54,5 +54,6 @@ with tarfile.open(archive,'w:gz') as tar:
 files=['ffmpeg-core.js','ffmpeg-core.wasm','ffmpeg-core.cjs','test-core.wasm',archive.name]
 manifest={'coreId':lock['coreId'],'sourceLockSHA256':hashlib.sha256((ROOT/'scripts/core/sources.lock.json').read_bytes()).hexdigest(),'files':{name:hashlib.sha256((OUT/name).read_bytes()).hexdigest() for name in files}}
 manifest['buildInputs']={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted((ROOT/'scripts/core').iterdir()) if p.suffix in ('.py','.sh','.json','.md')}
+manifest['sourceInputs']={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted((ROOT/'src/audio').glob('*.js'))}
 (OUT/'verified-build.json').write_text(json.dumps(manifest,indent=2)+'\n')
 print('Complete corresponding-source/relink archive:',archive.stat().st_size,'bytes')

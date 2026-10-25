@@ -1,7 +1,7 @@
 import { validateApeWav } from './ape-wav.js'
 export { validateApeWav } from './ape-wav.js'
 
-export function encodeApe(wavBytes, { signal, onStatus, coreURL, wasmURL } = {}) {
+export function encodeApe(wavBytes, { signal, onStatus, coreURL, wasmURL, transferOwnership = false } = {}) {
   if (signal?.aborted) return Promise.reject(new DOMException('Conversion cancelled', 'AbortError'))
   if (!coreURL || !wasmURL) return Promise.reject(new Error('APE runtime URLs are missing.'))
   try { validateApeWav(wavBytes) } catch (error) { return Promise.reject(error) }
@@ -24,9 +24,10 @@ export function encodeApe(wavBytes, { signal, onStatus, coreURL, wasmURL } = {})
       else if (data.type === 'done') finish(null, new Uint8Array(data.bytes))
       else if (data.type === 'error') finish(new Error(data.message))
     }
-    // Own a bounded copy so cancellation does not detach the caller's source buffer.
+    // Internal prepared PCM is disposable: transfer it once instead of copying hundreds of MiB.
+    // Public callers retain copy-by-default semantics; partial views cannot transfer unrelated bytes.
     let bytes
-    try { bytes = wavBytes instanceof Uint8Array ? wavBytes.slice() : new Uint8Array(wavBytes).slice() } catch (error) { finish(error); return }
+    try { const input=wavBytes instanceof Uint8Array ? wavBytes : new Uint8Array(wavBytes); bytes=transferOwnership && input.byteOffset===0 && input.byteLength===input.buffer.byteLength ? input : input.slice() } catch (error) { finish(error); return }
     if (signal?.aborted) { abort(); return }
     try { worker.postMessage({ bytes: bytes.buffer, coreURL, wasmURL }, [bytes.buffer]) }
     catch (error) { finish(error) }

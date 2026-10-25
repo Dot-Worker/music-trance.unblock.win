@@ -25,7 +25,7 @@ test('precision policy never silently quantizes float or >24bit source into FLAC
  assert.equal(conversionPlan('flac',{quality:'24'}, {...info,bitsPerSample:32,isFloat:true}).expected.bitsPerSample,24);
 });
 test('probe uses actual fields and decoded float precision',()=>{
- assert.deepEqual(audioInfoFromProbe({streams:[{codec_type:'audio',codec_name:'aac',sample_rate:'96000',channels:1,sample_fmt:'fltp'}]}),{codec:'aac',sampleRate:96000,channels:1,bitsPerSample:32,sampleFormat:'fltp',isFloat:true,bitRate:null,channelLayout:null});
+ assert.deepEqual(audioInfoFromProbe({streams:[{codec_type:'audio',codec_name:'aac',sample_rate:'96000',channels:1,sample_fmt:'fltp'}]}),{codec:'aac',sampleRate:96000,channels:1,bitsPerSample:32,sampleFormat:'fltp',isFloat:true,bitRate:null,channelLayout:null,duration:null});
  assert.throws(()=>audioInfoFromProbe({streams:[]}));
 });
 test('header probe and bounded parser',async()=>{
@@ -54,3 +54,24 @@ test('preaborted and lazy-import cancel never load core',async()=>{
 });
 
 test('AAC rejects bitrate beyond LC per-channel frame limit, never silently clamps',()=>{assert.throws(()=>conversionPlan('aac',{quality:'512'},info),/编码上限/);assert.equal(conversionPlan('aac',{quality:'512'}, {...info,channels:2}).quality,'512');});
+
+test('desktop PCM budgets reject estimated expansion and honor remaining result budget',()=>{
+ const source={...info,duration:1000,sampleRate:96000,channels:2,bitsPerSample:24,isFloat:false};
+ assert.throws(()=>conversionPlan('wav',{quality:'32float'},source),/预计 PCM/);
+ assert.throws(()=>conversionPlan('ape',{},source),/预计 PCM/);
+ const small={...source,duration:1};
+ const plan=conversionPlan('wav',{maxOutputBytes:1024*1024},small);
+ assert.equal(plan.args[plan.args.indexOf('-fs')+1],'1048576');
+ assert.throws(()=>conversionPlan('wav',{maxOutputBytes:128*1024},small),/预计 PCM/);
+ assert.throws(()=>conversionPlan('wav',{maxOutputBytes:0},small),/可用输出空间/);
+ assert.equal(audioInfoFromProbe({streams:[{codec_type:'audio',codec_name:'pcm_s16le',sample_rate:'48000',channels:2,duration:'2.5'}]}).duration,2.5);
+ assert.equal(audioInfoFromProbe({streams:[{codec_type:'audio',sample_rate:'48000',channels:2}],format:{duration:'3.75'}}).duration,3.75);
+});
+
+test('remaining output budget rejects near-cap output rather than exporting truncation',async()=>{
+ const {instance,events}=fakeEngine();const read=instance.readFile;
+ instance.readFile=async p=>p.endsWith('.json')?read(p):new Uint8Array(200*1024);
+ const engine=createAudioEngine({createFFmpeg:async()=>instance,assetURL:p=>p});
+ await assert.rejects(engine.convert(new Uint8Array([1]),{preset:'wav',maxOutputBytes:256*1024}),/available result budget/);
+ assert.ok(events.some(([event])=>event==='terminate'));
+});

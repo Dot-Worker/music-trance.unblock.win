@@ -1,3 +1,4 @@
+import { MAX_OUTPUT_BYTES, OUTPUT_GUARD_BYTES } from './limits.js';
 /** Format choices describe encoding, never a claim that conversion improves the source. */
 export const PRESETS=Object.freeze([
  {id:'mp3',label:'MP3',extension:'mp3',mime:'audio/mpeg',description:'128 / 192 / 256 / 320 kbps target'},
@@ -15,9 +16,10 @@ export function audioInfoFromProbe(value) {
  const isFloat=/^(flt|dbl)/.test(sampleFormat);
  const decodedBits=sampleFormat.startsWith('dbl')?64:sampleFormat.startsWith('flt')?32:sampleFormat.startsWith('s32')?32:sampleFormat.startsWith('s16')?16:sampleFormat.startsWith('u8')?8:0;
  const bitsPerSample=Number(stream.bits_per_raw_sample)||Number(stream.bits_per_sample)||decodedBits;
- return {codec:stream.codec_name,sampleRate,channels,bitsPerSample,sampleFormat,isFloat,bitRate:Number(stream.bit_rate)||null,channelLayout:stream.channel_layout||null};
+ return {codec:stream.codec_name,sampleRate,channels,bitsPerSample,sampleFormat,isFloat,bitRate:Number(stream.bit_rate)||null,channelLayout:stream.channel_layout||null,duration:Number(stream.duration)>0?Number(stream.duration):(Number(value?.format?.duration)>0?Number(value.format.duration):null)};
 }
-export function conversionPlan(id,{quality,sampleRate='source'}={},source,input='input.bin') {
+export function conversionPlan(id,{quality,sampleRate='source',maxOutputBytes=MAX_OUTPUT_BYTES}={},source,input='input.bin') {
+ if(!Number.isSafeInteger(maxOutputBytes)||maxOutputBytes<=OUTPUT_GUARD_BYTES||maxOutputBytes>MAX_OUTPUT_BYTES) throw new Error('可用输出空间不足，请先下载并释放已完成文件。');
  const preset=PRESETS.find(p=>p.id===id);
  if(!preset) throw new Error('未知输出格式。');
  if(!source?.sampleRate||!source?.channels) throw new Error('必须先读取实际音源信息，不能猜测采样率。');
@@ -58,7 +60,10 @@ export function conversionPlan(id,{quality,sampleRate='source'}={},source,input=
  }
  const output=id==='ape'?'ape-prepared.wav':`output.${preset.extension}`;
  const finalOutput=id==='ape'?'output.ape':output;
- return {finalOutput,preset,args:[...args,'-fs','134217728',output],output,expected:{sampleRate:rate,channels,bitsPerSample:bits,codec:codec==='libmp3lame'?'mp3':codec},quality};
+ const intermediateLimit=id==='ape'?MAX_OUTPUT_BYTES:maxOutputBytes;
+ const estimatedPCM=source.duration?Math.ceil(source.duration*rate)*channels*(bits||32)/8+65536:null;
+ if((id==='wav'||id==='ape')&&estimatedPCM&&estimatedPCM>=intermediateLimit-OUTPUT_GUARD_BYTES) throw new Error('预计 PCM 音频超过可用内存 / 输出预算，请选择压缩格式、较低位深或释放已完成文件。');
+ return {maxOutputBytes,intermediateLimit,estimatedPCM,finalOutput,preset,args:[...args,'-fs',String(intermediateLimit),output],output,expected:{sampleRate:rate,channels,bitsPerSample:bits,codec:codec==='libmp3lame'?'mp3':codec},quality};
 }
 export function outputName(name,extension) {
  const stem=String(name||'audio').replace(/\.[^.]*$/,'').replace(/[\\/:*?"<>|\x00-\x1f]/g,'_').slice(0,180)||'audio';

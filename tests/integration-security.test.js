@@ -17,7 +17,7 @@ test('independent integration: fixture integrity, exact plaintext and source/dat
   const bytes=read(name); assert.equal(sha(bytes),expected,name);
   if(name.endsWith('.db')) continue;
   if(name.includes('stag')) await assert.rejects(decryptFile(bytes,{name,dbBytes,sqlWasmUrl}),{code:'NEED_QQ_EKEY'});
-  else {const out=await decryptFile(bytes,{name,dbBytes,sqlWasmUrl});assert.equal(sha(out.audio),manifest.plain_sha256,name);assert.notEqual(out.audio.buffer,bytes.buffer,name+' output must not alias input');}
+  else {const out=await decryptFile(bytes,{name,dbBytes,sqlWasmUrl});assert.equal(sha(out.audio),manifest.plain_sha256,name);if(name==='plain.wav') assert.equal(out.audio.buffer,bytes.buffer,'plaintext immutable ownership view'); else assert.notEqual(out.audio.buffer,bytes.buffer,name+' decrypted output must not alias encrypted input');}
   assert.equal(sha(bytes),expected,name+' source unchanged');assert.equal(sha(dbBytes),dbHash,'DB unchanged');
  }
 });
@@ -68,7 +68,7 @@ test('ZIP outputs prevent traversal, prototype names, reserved names, collisions
 test('queue limits reject empty and oversized input, cap count and batch',()=>{
  assert.equal(validateAddition([],[{name:'zero',size:0},{name:'big',size:LIMITS.file+1}]).accepted.length,0);
  assert.equal(validateAddition([],Array.from({length:21},(_,i)=>({name:String(i),size:1}))).accepted.length,20);
- assert.equal(validateAddition([],Array.from({length:5},(_,i)=>({name:String(i),size:LIMITS.file}))).accepted.length,4);
+ assert.equal(validateAddition([],Array.from({length:5},(_,i)=>({name:String(i),size:LIMITS.file}))).accepted.length,Math.floor(LIMITS.batch/LIMITS.file));
 });
 
 test('source mode preserves probed channels/rate rather than hidden stereo resampling',()=>{
@@ -102,4 +102,21 @@ test('APE worker adapter terminates on abort without detaching source',async()=>
  class FakeWorker {postMessage(message){posted=message;}terminate(){terminated++;}}
  globalThis.Worker=FakeWorker;
  try {const source=read('plain.wav'),original=sha(source),controller=new AbortController();const pending=encodeApe(source,{signal:controller.signal,coreURL:'https://example.invalid/self/ape.js',wasmURL:'https://example.invalid/self/ape.wasm'});assert.ok(posted.bytes instanceof ArrayBuffer);assert.notEqual(posted.bytes,source.buffer);controller.abort();await assert.rejects(pending,{name:'AbortError'});assert.equal(terminated,1);assert.equal(sha(source),original);}finally{if(previous===undefined)delete globalThis.Worker;else globalThis.Worker=previous;}
+});
+
+test('APE disposable PCM transfers once, partial views keep unrelated caller bytes intact',async()=>{
+ const {encodeApe}=await import('../src/audio/ape-encoder.js');const previous=globalThis.Worker;let received,terminated=0;
+ class FakeWorker {postMessage(message,transfer){received=structuredClone(message,{transfer});}terminate(){terminated++;}}
+ globalThis.Worker=FakeWorker;
+ try {
+  for(const partial of [false,true]) {
+   const fixture=read('plain.wav');const backing=new Uint8Array(fixture.length+(partial?4:0));backing.set(fixture,partial?2:0);const input=partial?backing.subarray(2,-2):backing;
+   const controller=new AbortController();const pending=encodeApe(input,{transferOwnership:true,signal:controller.signal,coreURL:'/ape.js',wasmURL:'/ape.wasm'});
+   assert.equal(received.bytes.byteLength,fixture.length);
+   assert.equal(backing.byteLength,partial?fixture.length+4:0);
+   assert.equal(sha(new Uint8Array(received.bytes)),sha(fixture));
+   controller.abort();await assert.rejects(pending,{name:'AbortError'});
+  }
+  assert.equal(terminated,2);
+ }finally{if(previous===undefined)delete globalThis.Worker;else globalThis.Worker=previous;}
 });

@@ -4,3 +4,5 @@
 
 /* Compact format-first converter. */
 .intro{padding:38px 0 28px}.intro h1{font-size:34px}.intro .eyebrow{margin-bottom:12px}.workspace{min-height:570px}.dropzone{min-height:225px}.format-card{padding:15px 17px 12px}.format-top>span:first-child{font-size:24px}.format-card p{margin:8px 0 12px}.usage-help{margin:24px 0 28px;color:#8294aa;font-size:11px;line-height:1.9}.usage-help summary{cursor:pointer;width:fit-content;color:#9aadc2}.usage-help p{max-width:840px;margin:9px 0}.field-label{margin-top:15px}select:disabled{opacity:.45;cursor:not-allowed}.page-footer{margin-top:6px}.start-area p{font-size:10px}@media(max-width:760px){.intro{padding:28px 0 24px}.intro h1{font-size:29px}.workspace{min-height:0}.usage-help{margin-bottom:22px}}
+
+.desktop-note{font-size:11px;color:#9caec2;line-height:1.8;margin:-8px 0 20px}.queue-heading h3{display:flex;align-items:center;flex-wrap:wrap;gap:5px}.queue-heading h3 small{font-size:9px;font-weight:400;color:#7890aa;margin-left:9px}.file-actions .remove{white-space:nowrap}

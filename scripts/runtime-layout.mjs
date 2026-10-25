@@ -9,7 +9,7 @@ export function runtimeLayout() {
  const sourceFile=`audio-source-${manifest.files['audio-lgpl-1-corresponding-source.tar.gz']}.tar.gz`;
  const wrapperSource='node_modules/@ffmpeg/ffmpeg/dist/esm';
  const wrapperBytes=readdirSync(wrapperSource).filter(n=>n.endsWith('.js')).sort().map(n=>n+'\n'+readFileSync(`${wrapperSource}/${n}`,'utf8')).join('\n');
- const wrapperDirectory=`vendor/ffmpeg-0.12.15-${hash(wrapperBytes+coreDirectory)}`;
+ const wrapperDirectory=`vendor/ffmpeg-0.12.15-${hash(wrapperBytes+coreDirectory+readFileSync('scripts/vendor.mjs','utf8'))}`;
  const apeManifestBytes=readFileSync('artifacts/ape/verified-build.json');
  const apeManifest=JSON.parse(apeManifestBytes);
  const apeDirectory=`vendor/ape-normal-1-${hash(apeManifest.files['ape.js']+apeManifest.files['ape.wasm'])}`;

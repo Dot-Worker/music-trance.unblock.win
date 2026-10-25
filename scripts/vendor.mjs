@@ -15,6 +15,10 @@ if(apeManifest.files?.['MAC_1343_SDK.zip']&&apeManifest.files['MAC_1343_SDK.zip'
 if(apeManifest.coreId!=='ape-normal-1'||Object.keys(apeManifest.files||{}).length!==apeFiles.length||apeFiles.some(f=>!/^([a-f0-9]{64})$/.test(apeManifest.files[f]||'')))throw Error('Incomplete APE binary/source manifest.');
 for(const file of apeFiles)if(sha(await readFile(`artifacts/ape/${file}`))!==apeManifest.files[file])throw Error(`APE integrity failure: ${file}`);
 for(const file of ['README.md','build.sh','download.py','package.py','patch.py','prepare.py','test-download.py','test.mjs','wrapper.cpp']){const path=`scripts/ape/${file}`;if(apeManifest.buildInputs?.[path]!==sha(await readFile(path)))throw Error(`APE recipe changed: ${path}`);}
+for(const record of [manifest,apeManifest]) {
+ if(!record.sourceInputs||!Object.keys(record.sourceInputs).length)throw Error('Source archive has no application dependency manifest.');
+ for(const [file,hash] of Object.entries(record.sourceInputs))if(sha(await readFile(file))!==hash)throw Error(`Packaged audio source changed; regenerate corresponding source: ${file}`);
+}
 await rm('public/vendor',{recursive:true,force:true});
 const layout=runtimeLayout();
 await mkdir(`public/${layout.apeDirectory}`,{recursive:true});
@@ -28,6 +32,12 @@ await copyFile('artifacts/core/verified-build.json',`public/${layout.coreDirecto
 const from='node_modules/@ffmpeg/ffmpeg/dist/esm',to=`public/${layout.wrapperDirectory}`;
 await mkdir(to,{recursive:true});
 for(const name of await readdir(from)) if(name.endsWith('.js')) await copyFile(`${from}/${name}`,`${to}/${name}`);
+// Wrapper transfers Uint8Array ownership into its worker; MEMFS can retain it without another full copy.
+const workerPath=`${to}/worker.js`;
+const originalWorker=await readFile(workerPath,'utf8');
+const writeCall='ffmpeg.FS.writeFile(path, data);';
+if(originalWorker.split(writeCall).length!==2)throw Error('Unexpected FFmpeg wrapper writeFile implementation.');
+await writeFile(workerPath,originalWorker.replace(writeCall,'ffmpeg.FS.writeFile(path, data, { canOwn: data instanceof Uint8Array });'));
 const constants=`${to}/const.js`;
 await writeFile(constants,(await readFile(constants,'utf8')).replace(/export const CORE_URL = .*;/,`export const CORE_URL = new URL("../${layout.coreDirectory.split('/').at(-1)}/ffmpeg-core.js", import.meta.url).href;`));
 await mkdir('public/vendor/sql.js-1.15.1',{recursive:true});

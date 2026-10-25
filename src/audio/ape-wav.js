@@ -1,8 +1,9 @@
 // Gate the independently verified APE subset before calling the C++ WAV parser.
-export const MAX_APE_WAV_BYTES = 128 * 1024 * 1024
+import { MAX_OUTPUT_BYTES } from './limits.js'
+export const MAX_APE_WAV_BYTES = MAX_OUTPUT_BYTES
 export function validateApeWav(input) {
   const bytes = input instanceof Uint8Array ? input : new Uint8Array(input)
-  if (bytes.byteLength < 44 || bytes.byteLength > MAX_APE_WAV_BYTES) throw new Error('APE WAV size must be between 44 bytes and 128 MiB.')
+  if (bytes.byteLength < 44 || bytes.byteLength > MAX_APE_WAV_BYTES) throw new Error('APE WAV size must be between 44 bytes and 512 MiB.')
   const v = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
   const tag = p => String.fromCharCode(...bytes.subarray(p, p + 4))
   if (tag(0) !== 'RIFF' || tag(8) !== 'WAVE') throw new Error('APE requires a finalized RIFF WAV input.')

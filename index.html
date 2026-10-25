@@ -15,12 +15,13 @@
 <header class="topbar"><a class="brand" href="./" aria-label="Music Trance 首页"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>music<span class="brand-light">trance</span><small>LOCAL AUDIO WORKBENCH</small></span></a><div class="privacy"><span class="status-dot"></span> 文件留在你的设备 <span class="privacy-detail">· 无上传</span></div></header>
 <main>
 <section class="intro"><div><div class="eyebrow">LOCAL AUDIO CONVERTER</div><h1>本地音乐转换<span>。</span></h1><p>解密、转格式、下载。文件和密钥不上传。</p></div></section>
+<p class="desktop-note">桌面大文件模式：建议至少 8 GB 空闲内存；本页不检测可用内存。下载后请释放结果。</p>
 <div class="workbench">
 <section class="workspace" aria-labelledby="queue-title">
 <div class="section-heading"><div><span class="step">01</span><h2 id="queue-title">添加音乐</h2></div><button id="demo" class="text-button" type="button">试试合成示例 <span aria-hidden="true">↗</span></button></div>
 <label id="dropzone" class="dropzone" for="files" tabindex="0" role="button" aria-label="选择音乐文件，或拖放到这里"><span class="upload-icon" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M16 22V6m-6 6 6-6 6 6M6 21v5h20v-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span><strong>把音乐拖到这里</strong><span>或 <em>选择本地文件</em>，可一次添加多首</span><small>NCM · KGM / KGMA · VPR · KGG · KWM · QMC · MFLAC / MGG</small></label>
 <input id="files" class="visually-hidden" type="file" multiple aria-label="添加音乐文件" accept=".ncm,.kgm,.kgma,.vpr,.kgg,.kwm,.qmc0,.qmc2,.qmc3,.qmc4,.qmc6,.qmc8,.qmcflac,.qmcogg,.tkm,.mflac,.mflac0,.mflach,.mgg,.mgg0,.mgg1,.mggl,.mmp4,.bkcmp3,.bkcm4a,.bkcflac,.bkcwav,.bkcogg,.bkcwma,.flac,.mp3,.wav,.ogg,.m4a,.aac,.wma,.ape" />
-<div class="queue-heading"><h3>转换队列 <span id="queue-count">0</span></h3><button id="clear" type="button" class="text-button" disabled>清空</button></div>
+<div class="queue-heading"><h3>转换队列 <span id="queue-count">0</span><small id="queue-memory"></small></h3><button id="clear" type="button" class="text-button" disabled>清空</button></div>
 <div id="empty-state" class="empty-state"><div class="empty-record" aria-hidden="true"><span></span></div><p>等待添加音乐</p><small>支持加密音乐与常见音频文件</small></div>
 <ul id="queue" class="queue" aria-label="音乐转换队列"></ul>
 <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
@@ -39,7 +40,7 @@
 <div class="start-area"><button id="start" class="primary-button" type="button" disabled><span id="start-label">开始转换</span><span aria-hidden="true">→</span></button><button id="cancel" class="secondary-button" type="button" hidden>停止转换</button><button id="download-all" class="secondary-button" type="button" disabled>打包下载 ZIP <span id="ready-count"></span></button><p>不修改原文件</p></div>
 </aside>
 </div>
-<details class="usage-help"><summary>支持格式与使用限制</summary><p>每个文件 ≤ 64 MiB，最多 20 个，输入合计 ≤ 256 MiB；数据库 ≤ 32 MiB，ZIP 输出合计 ≤ 256 MiB。转码输出有内存上限，超限会提示失败，不输出截断音频。</p><p>仅解密保留源音频；转码不保留标签 / 封面。采样率默认逐首跟随音源，不支持的参数会提示你另选，不静默改变。QQ STag 缺少 ekey 时无法解密。仅处理你有权使用的文件。</p></details>
+<details class="usage-help"><summary>支持格式与使用限制</summary><p>每个文件 ≤ 256 MiB，最多 20 个，输入合计 ≤ 512 MiB；数据库 ≤ 32 MiB。结果累计 ≤ 512 MiB，ZIP 输入合计 ≤ 256 MiB（逐块打包）；更大结果请逐首下载。转码输出有内存上限，超限会提示失败，不输出截断音频。</p><p>仅解密保留源音频；转码不保留标签 / 封面。采样率默认逐首跟随音源，不支持的参数会提示你另选，不静默改变。QQ STag 缺少 ekey 时无法解密。仅处理你有权使用的文件。</p></details>
 </main>
 <footer class="page-footer"><span>MUSIC TRANCE <b> / </b> LOCAL AUDIO</span><span class="footer-right"><span>关闭页面前请保存结果</span><span class="footer-licenses"><a id="license-link" href="./THIRD_PARTY_NOTICES.txt" aria-label="开源许可：FFmpeg LGPL 与 APE BSD">开源许可</a><span aria-hidden="true"> · </span><a id="core-source-link" download>FFmpeg 源码</a><span aria-hidden="true"> · </span><a id="ape-source-link" download>APE 源码</a></span></span></footer>
 </div>
