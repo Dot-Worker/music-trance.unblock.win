@@ -6,3 +6,7 @@ public/vendor/
 artifacts/
 
 __pycache__/
+
+.ape-build/
+
+.ape-source/
