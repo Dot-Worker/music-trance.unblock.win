@@ -26,7 +26,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: artifacts/core
-          key: audio-lgpl-1-${{ runner.os }}-${{ hashFiles('scripts/core/**', 'scripts/test-wasm.mjs', 'src/audio/presets.js', 'src/audio/probe.js') }}
+          key: audio-lgpl-1-${{ runner.os }}-${{ hashFiles('scripts/core/**', 'scripts/test-wasm.mjs', 'src/audio/*.js') }}
       - name: Install build and synthetic-fixture prerequisites
         run: sudo apt-get update && sudo apt-get install -y build-essential autoconf automake libtool pkg-config python3 ffmpeg
       - name: Build pinned LGPL-only audio core and actual source/relink archive
@@ -34,6 +34,17 @@ jobs:
         run: npm run build:core
       - name: Independently recheck codecs, license and configuration on cache hits too
         run: npm run test:wasm
+      - name: Cache source-built normal-compression APE encoder
+        id: ape-cache
+        uses: actions/cache@v4
+        with:
+          path: artifacts/ape
+          key: ape-normal-1-${{ runner.os }}-${{ hashFiles('scripts/ape/**', 'scripts/core/sources.lock.json', 'src/audio/ape-*.js') }}
+      - name: Build official-source APE encoder
+        if: steps.ape-cache.outputs.cache-hit != 'true'
+        run: npm run build:ape
+      - name: Verify APE bit-exact decoding and full conversion pipeline
+        run: npm run test:ape
       - name: Build static site (fails closed unless source and binary digests match)
         run: npm run build
       - uses: actions/upload-artifact@v4
