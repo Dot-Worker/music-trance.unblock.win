@@ -1,0 +1,10 @@
+import {starts,fail,DecryptError} from './util.js';
+import {KGM_MAGIC,VPR_MAGIC} from './tables.js';
+import {decryptNcm,decryptKgm,decryptKwm} from './formats.js';
+import {decryptQmc} from './qmc.js';
+import {sniffAudio} from './sniff.js';
+import {decryptKgg} from './kgg.js';
+export {DecryptError,sniffAudio};
+const qmcExts=new Set('qmc0 qmc2 qmc3 qmc4 qmc6 qmc8 qmcflac qmcogg tkm mflac mflac0 mflach mgg mgg0 mgg1 mggl mmp4 bkcmp3 bkcm4a bkcflac bkcwav bkcogg bkcwma'.split(' '));
+export function detect(bytes,name=''){const t=name.split(/[\\/]/).at(-1).toLowerCase().split('.').slice(1);if(starts(bytes,'CTENFDAM'))return 'ncm';if(starts(bytes,VPR_MAGIC))return 'vpr';if(starts(bytes,KGM_MAGIC))return t.includes('kgg')?'kgg':'kgm';if(starts(bytes,'yeelion-kuwo-tme')||starts(bytes,'yeelion-kuwo\0\0\0\0'))return 'kwm';for(const ext of ['kgg','kgm','kgma','vpr','ncm','kwm'])if(t.includes(ext))return ext==='kgma'?'kgm':ext;if(t.some(x=>qmcExts.has(x))||starts(bytes,'QTag',bytes.length-4)||starts(bytes,'STag',bytes.length-4))return 'qmc';return sniffAudio(bytes)?'plain':'unknown';}
+export async function decryptFile(input,options={}){const data=input instanceof Uint8Array?input:input instanceof ArrayBuffer?new Uint8Array(input):null;if(!data)fail('INVALID_FILE','输入必须为二进制文件。');if(data.length>64*1024*1024)fail('FILE_TOO_LARGE','单个文件上限为 64 MiB。');if(options.dbBytes?.byteLength>32*1024*1024)fail('DB_TOO_LARGE','密钥库上限为 32 MiB。');const kind=detect(data,options.name);let result;try{switch(kind){case 'ncm':result=decryptNcm(data);break;case 'kwm':result=decryptKwm(data);break;case 'vpr':case 'kgm':result=decryptKgm(data);break;case 'qmc':result=decryptQmc(data);break;case 'kgg':result=await decryptKgg(data,options);break;case 'plain':result={audio:data.slice(),sourceFormat:'plain'};break;default:fail('UNSUPPORTED_FORMAT','无法识别此文件；不按扩展名直接输出。');}const extension=sniffAudio(result.audio);if(!extension)fail('INVALID_AUDIO','解密结果不是可识别的音频，可能为损坏文件或密钥不匹配。');return {metadata:{},cover:new Uint8Array(),...result,extension};}catch(error){if(error instanceof DecryptError)throw error;fail('INVALID_FILE','文件解析失败，可能已损坏或格式暂不支持。');}}

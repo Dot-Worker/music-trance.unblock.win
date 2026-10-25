@@ -1,0 +1,17 @@
+{
+  "plain_sha256": "c01f3a8d103c8dad70c099c68e7851e652fe917831ee9a555dc57419c441cb6a",
+  "files": {
+    "plain.wav": "c01f3a8d103c8dad70c099c68e7851e652fe917831ee9a555dc57419c441cb6a",
+    "sample.ncm": "0cdd0d6d03f7dc403eb8b73977cbedb6cac9758f799b0caa09a938256eabe008",
+    "sample.kgm": "c48de21e77ce59c0f44cc794675c29ff74ca3f60793d7ed9e2d377904da4108b",
+    "sample.vpr": "93b6edd38d56be7240444d918b7d5b435e1b318510c3fb617204b2360fa9630a",
+    "sample.kwm": "6a41a69b383c8f4678b3d7f87a6a8f019922ba4b42526d49365624cce9a20a50",
+    "sample.qmc0": "9bcb44e3047de50ded6d3a9d37e0b250dfb8e9a3f5b913cd6ce044e0596c47a9",
+    "sample.mflac": "baa926b212754f76da5f753376ead09fca15dc3b178c70c04e1f4d40d4912f22",
+    "sample.mgg": "150dbb66b969a45e1ec49bc2b8c4eef1e4f528716fbe5af7f63c056c5336f81c",
+    "sample_stag.mflac": "87c2ebb216713cca3c26518c5eb1d25f39598aba03e0b4a080631ec25331102c",
+    "sample.kgg": "c48de21e77ce59c0f44cc794675c29ff74ca3f60793d7ed9e2d377904da4108b",
+    "kgg_fixture.db": "a750e32986b154aa10cb393a3d80d23e5ee545d3b4ab86b9fd8ff75daf088249"
+  },
+  "notes": "Synthetic 440Hz WAV only. No copyrighted audio."
+}

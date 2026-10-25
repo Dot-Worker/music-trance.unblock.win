@@ -1,2 +1,57 @@
-# music-trance.unblock.win
-Browser-only local audio conversion. Files stay on your device.
+# Music Trance · 浏览器本地音频转换
+
+将已有本地音乐文件解密或转换为建议的车载音频格式。**纯静态网页：音频、数据库和用户输入的密钥都在浏览器内处理，不上传到转换服务器。** GitHub Actions 只构建程序及运行合成样本测试，GitHub Pages 只提供静态资源。
+
+目标仓库：`Dot-Worker/music-trance.unblock.win`。目标站点：`https://music-trance.unblock.win/`。
+
+本项目是用户提供的 `WYYYYKG2Porsche`（Copyright © 2026 WangZhen，MIT）的浏览器移植版，不是音乐平台或保时捷官方应用。只用于合法持有、有权处理的本地文件。不提供账户登录、线上取钥或付费授权绕过。
+
+## 功能与边界
+
+- NCM；KGM/KGMA/VPR；老 KWM；传统 QMC，以及携带 ekey 的旧 MFLAC/MGG。
+- KGG 需要用户明确选择自己的匹配 SQLite 数据库。明文数据库合成样本已验证；加密数据库只尝试原项目的有限旧 SQLCipher 布局，仍属实验性支持，不保证所有版本。
+- QQ 新版 STag / musicex 没有内嵌 ekey 时明确返回 `NEED_QQ_EKEY`，不伪装成功。
+- 仅解密：保留解出的音频容器；不是所有车机都能播放该容器。
+- WAV：PCM 16-bit、立体声，明确选择 44.1 或 48 kHz。
+- MP3：目标 320 kbps，ID3v2.3 容器设置。
+- AAC：AAC-LC / M4A，目标 320 kbps，实际码率会随内容变化，不宣称恒定 320 kbps。
+- 批量队列、逐项下载或 ZIP 下载、取消、失败条目重试。输出使用独立安全文件名，不改写原始输入。
+
+年份只是沿用原项目建议的输出预设：2010 默认 AAC；2011–2026 默认 WAV，另有容量优先和仅解密。**没有进行真实车机、真实加密音乐全集或手机兼容性验证**，不把年份等同于具体主机配置。WAV 不会恢复有损音源已经丢失的音质。当前转码不额外写入原加密容器的歌手、标题和封面。
+
+## 使用
+
+1. 在支持 WebAssembly 和 Web Worker 的浏览器中打开网站。
+2. 选择文件、年份建议和输出选项。KGG 如需数据库，单独选择本地数据库；密钥只输入网页的本地密码框，**不要发到聊天或提交到仓库**。
+3. 点击开始转换；首次转码才加载同站的音频专用核心，约 2.5 MiB。数据库处理需要的 SQLite 组件也来自本站静态文件。
+4. 下载结果。需要 U 盘时由用户自行复制；网页不扫描系统目录、不格式化 U 盘、不自动覆盖文件。
+
+浏览器版采用保守限制：单文件 64 MiB、队列 20 个文件、批次总输入 256 MiB、数据库 32 MiB、ZIP 总输出 256 MiB；单个转码输出接近 128 MiB 上限时拒绝导出，而不是保存截断音频。大文件仍可能受设备内存、浏览器和编解码格式限制。
+
+数据库、密钥、队列和结果不写入 localStorage / IndexedDB。页面清空或离开时释放引用和 Blob URL；JavaScript 垃圾回收不等于可证明的安全擦除。网页 CSP 限制脚本和网络来源，代码不提供上传接口或外部封面抓取。
+
+## 开发与构建
+
+需要 Node.js 24、Python 3、Linux 构建工具；实际编解码测试还使用系统 FFmpeg / ffprobe 生成和检查无版权正弦波样本。运行时不依赖本机安装 FFmpeg。
+
+```sh
+npm ci --ignore-scripts
+npm test
+npm run build:core
+npm run test:wasm
+npm run build
+```
+
+首次构建会下载锁定的官方 Emscripten 工具链和 SHA-256 验证的源码。详见 [音频核心构建](scripts/core/README.md)。`dist/` 是完整静态部署目录。不要把 `.core-build/`、`node_modules/`、构建缓存、原始上传 ZIP 或 Android 签名材料提交到仓库。
+
+## 开源许可与转码核心
+
+主应用移植保留原 MIT 版权声明。运行时使用自行从固定源码编译的单线程、音频专用 FFmpeg / LAME 核心，不使用 npm 提供的通用 GPL FFmpeg 二进制；构建关闭 GPL、nonfree、网络和外部视频库。
+
+每个核心与对应源码、补丁、编译配置及重链接材料一起生成，并由摘要清单关联；站点提供同源源码下载和许可文本。库与主应用各自保留原许可，不把整包统称为 MIT。参见 [第三方说明](THIRD_PARTY_NOTICES.md)。这不是对所有地区专利或所有第三方素材权利的保证。
+
+## 验证口径
+
+合成样本为原项目提供的 440 Hz 音频，按 manifest 校验，解密结果与已知 WAV 的 SHA-256 逐字节比对。测试还覆盖错误密钥、截断输入、SQL 标识符转义、文件名/ZIP 路径、重复操作、取消和内存结果清理。
+
+已经执行的本地核心测试与网页上线后的实际浏览器测试应分开记录；构建成功不等于车机或所有浏览器都通过。实际 CI、部署和浏览器验收结果见仓库运行记录与后续验收文档。

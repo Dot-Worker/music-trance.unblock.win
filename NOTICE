@@ -1,0 +1,15 @@
+Music Trance browser port
+
+Adapted from the user-supplied WYYYYKG2Porsche project,
+Copyright (c) 2026 WangZhen, distributed under the MIT License.
+See LICENSE and licenses/original-MIT.txt.
+
+Synthetic test audio is a 440 Hz tone identified by the original project as
+non-commercial generated test data. No real user audio, signing keystores,
+account databases or user secrets are included.
+
+FFmpeg, LAME, SQLite/sql.js, crypto-js, fflate and build/runtime tooling retain
+their own copyrights and licenses. See THIRD_PARTY_NOTICES.md and the matching
+source/relink materials delivered with the browser audio core.
+
+This project is not endorsed by Porsche or any music platform.

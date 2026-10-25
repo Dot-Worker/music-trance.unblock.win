@@ -1,0 +1,34 @@
+{
+  "coreId": "audio-lgpl-1",
+  "emscriptenVersion": "3.1.40",
+  "sources": [
+    {
+      "name": "ffmpeg",
+      "repository": "https://github.com/FFmpeg/FFmpeg",
+      "revision": "4729204c17f756e186d622060088371d10b34f7e",
+      "url": "https://codeload.github.com/FFmpeg/FFmpeg/tar.gz/4729204c17f756e186d622060088371d10b34f7e",
+      "sha256": "0d7ad57d4dd851d577fc6c19e5cec5b6e5faaeb2dbd52ab76127e3c3763fec6d"
+    },
+    {
+      "name": "bridge",
+      "repository": "https://github.com/ffmpegwasm/ffmpeg.wasm",
+      "revision": "f876f907c7e9b9bf51d4ed0b913a855a63ae63fc",
+      "url": "https://codeload.github.com/ffmpegwasm/ffmpeg.wasm/tar.gz/f876f907c7e9b9bf51d4ed0b913a855a63ae63fc",
+      "sha256": "5191762afdd8fdbec457fd2650cc773fcebcfe1d5bcb7e5ee9584e1a78bd3d5b"
+    },
+    {
+      "name": "lame",
+      "repository": "https://github.com/ffmpegwasm/lame",
+      "revision": "2badea1974ae36cb8312afe99cff1e6b3b5decee",
+      "url": "https://codeload.github.com/ffmpegwasm/lame/tar.gz/2badea1974ae36cb8312afe99cff1e6b3b5decee",
+      "sha256": "0d97ba0776988f5730e0ce1fa936e7c5d6836c757993ba55073513fe89cf410a"
+    },
+    {
+      "name": "emsdk",
+      "repository": "https://github.com/emscripten-core/emsdk",
+      "revision": "ae245715ef50e036b68a2412a323129676bf8300",
+      "url": "https://codeload.github.com/emscripten-core/emsdk/tar.gz/ae245715ef50e036b68a2412a323129676bf8300",
+      "sha256": "74ca62e60359fb946e297001913a1f10dbd77271ab86671f5e5c2bd1f5b89b3a"
+    }
+  ]
+}

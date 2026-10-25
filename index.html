@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' blob: data:; font-src 'self'; connect-src 'self'; worker-src 'self' blob:; media-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'none'" />
+<meta name="referrer" content="no-referrer" />
+<meta name="description" content="在浏览器本地解密、转换你有权使用的音乐文件。无需上传，提供车载音频建议预设。" />
+<meta name="theme-color" content="#0b101a" />
+<title>Music Trance · 本地音乐转换工作台</title>
+<link rel="stylesheet" href="/src/styles.css" />
+</head>
+<body>
+<div class="app-shell">
+<header class="topbar"><a class="brand" href="./" aria-label="Music Trance 首页"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>music<span class="brand-light">trance</span><small>LOCAL AUDIO WORKBENCH</small></span></a><div class="privacy"><span class="status-dot"></span> 文件留在你的设备 <span class="privacy-detail">· 无上传</span></div></header>
+<main>
+<section class="intro"><div><div class="eyebrow">YOUR MUSIC. YOUR DRIVE.</div><h1>音乐，换一种方式出发<span>。</span></h1><p>解开本地音频容器，转换为适合随行的格式。<br class="mobile-break" />所有处理，只在你的浏览器里。</p></div><div class="local-badge"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3 4.5 6v5c0 5 7.5 10 7.5 10S19.5 16 19.5 11V6L12 3Z" stroke="currentColor" stroke-width="1.5"/><path d="m8.5 11.5 2.3 2.3 4.7-4.7" stroke="currentColor" stroke-width="1.5"/></svg><span>本地处理<small>PRIVATE BY DESIGN</small></span></div></section>
+<div class="workbench">
+<section class="workspace" aria-labelledby="queue-title">
+<div class="section-heading"><div><span class="step">01</span><h2 id="queue-title">添加音乐</h2></div><button id="demo" class="text-button" type="button">试试合成示例 <span aria-hidden="true">↗</span></button></div>
+<label id="dropzone" class="dropzone" for="files" tabindex="0" role="button" aria-label="选择音乐文件，或拖放到这里"><span class="upload-icon" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M16 22V6m-6 6 6-6 6 6M6 21v5h20v-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span><strong>把音乐拖到这里</strong><span>或 <em>选择本地文件</em>，可一次添加多首</span><small>NCM · KGM / KGMA · VPR · KGG · KWM · QMC · MFLAC / MGG</small><span class="limits">单文件 ≤ 64 MiB <b>·</b> 最多 20 首 <b>·</b> 合计 ≤ 256 MiB</span></label>
+<input id="files" class="visually-hidden" type="file" multiple aria-label="添加音乐文件" accept=".ncm,.kgm,.kgma,.vpr,.kgg,.kwm,.qmc0,.qmc2,.qmc3,.qmc4,.qmc6,.qmc8,.qmcflac,.qmcogg,.tkm,.mflac,.mflac0,.mflach,.mgg,.mgg0,.mgg1,.mggl,.mmp4,.bkcmp3,.bkcm4a,.bkcflac,.bkcwav,.bkcogg,.bkcwma,.flac,.mp3,.wav,.ogg,.m4a,.aac" />
+<div class="queue-heading"><h3>转换队列 <span id="queue-count">0</span></h3><button id="clear" type="button" class="text-button" disabled>清空</button></div>
+<div id="empty-state" class="empty-state"><div class="empty-record" aria-hidden="true"><span></span></div><p>下一段旅程，从一首歌开始</p><small>文件加入后，会在这里显示转换状态</small></div>
+<ul id="queue" class="queue" aria-label="音乐转换队列"></ul>
+<div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+<div class="workspace-footer"><span><span class="tiny-lock" aria-hidden="true">◇</span> 不读取你未选择的文件</span><span>不存储密钥或转换历史</span></div>
+</section>
+<aside class="settings" aria-labelledby="settings-title">
+<div class="section-heading"><div><span class="step">02</span><h2 id="settings-title">输出设置</h2></div><span class="small-label">PRESET</span></div>
+<fieldset id="settings-fields"><legend class="visually-hidden">输出预设</legend><label class="field-label" for="mode">转换模式</label><select id="mode"><option value="vehicle">车载建议预设</option><option value="compact">容量优先 · MP3</option><option value="copy">仅解密 · 保留原格式</option></select>
+<div id="year-field"><label class="field-label" for="year">车辆年份 <span>参考原项目配置</span></label><select id="year" aria-describedby="compatibility-note"></select></div>
+<div id="rate-field"><label class="field-label" for="sample-rate">输出采样率 <span>明确选择，不自动保留</span></label><select id="sample-rate"><option value="44100">44.1 kHz</option><option value="48000">48 kHz</option></select></div>
+<div class="format-card"><div class="format-top"><span id="format-label">WAV</span><span id="format-tag">PCM AUDIO</span></div><p id="format-description">16-bit · 双声道</p><div class="format-bottom"><span id="format-rate">44.1 / 48 kHz</span><span>本地输出 <span aria-hidden="true">↗</span></span></div></div>
+<p id="compatibility-note" class="help-text">预设沿用原项目建议，未经实车兼容性验证。转为 WAV 不会恢复有损音频已丢失的音质。</p>
+<details class="advanced"><summary>KGG 解密辅助设置 <span>可选</span></summary><div class="advanced-body"><p>仅 KGG 需要你手动选择 KGMusicV3.db。不会搜索磁盘；数据库与密钥仅在本页内存中使用。加密数据库兼容性为实验性，尚未完成真实加密库成功验证。</p><label class="field-label" for="database">本地数据库（≤ 32 MiB）</label><input id="database" type="file" accept=".db" /><div id="db-status" class="help-text">未选择数据库</div><label class="field-label" for="master-key">数据库主密钥（可选）</label><input id="master-key" type="password" autocomplete="off" spellcheck="false" placeholder="64 位十六进制" maxlength="64" aria-describedby="key-help"/><small id="key-help">不保存、不上传；清空队列时移除。</small></div></details>
+</fieldset>
+<div class="start-area"><button id="start" class="primary-button" type="button" disabled><span id="start-label">开始转换</span><span aria-hidden="true">→</span></button><button id="cancel" class="secondary-button" type="button" hidden>停止转换</button><button id="download-all" class="secondary-button" type="button" disabled>打包下载 ZIP <span id="ready-count"></span></button><p>输出为新文件，不修改原始音频；转码不保留标签 / 封面</p></div>
+</aside>
+</div>
+<section class="guide" aria-label="使用提示"><article><span>01 / LOCAL</span><h3>你的文件，不必离开设备</h3><p>解密与转码均在浏览器中执行。首次转码会加载本站音频引擎，不会上传音频或数据库。</p></article><article><span>02 / HONEST</span><h3>换格式，不虚构音质</h3><p>MP3 / AAC 目标码率为 320 kbps，实际编码以引擎结果为准。仅解密模式保留源音频，不重新编码。</p></article><article><span>03 / YOURS</span><h3>只处理你有权使用的音乐</h3><p>部分新版 QQ STag 文件缺少必要 ekey，会明确提示无法解密。请勿用于绕过付费授权或传播受保护内容。</p></article></section>
+</main>
+<footer class="page-footer"><span>MUSIC TRANCE <b> / </b> MADE FOR THE JOURNEY</span><span class="footer-right"><span>浏览器本地工作台 · 关闭页面即释放内存</span><span class="footer-licenses"><a id="license-link" href="./THIRD_PARTY_NOTICES.txt">FFmpeg LGPL 许可</a><span aria-hidden="true"> · </span><a id="core-source-link" download>对应源码下载</a></span></span></footer>
+</div>
+<script type="module" src="/src/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+{
+  "name": "music-trance-browser",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/vendor.mjs && vite --host 0.0.0.0",
+    "build": "node scripts/vendor.mjs && vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "test": "node --test tests/*.test.js",
+    "test:wasm": "node scripts/test-wasm.mjs",
+    "build:core": "bash scripts/core/build.sh"
+  },
+  "dependencies": {
+    "@ffmpeg/ffmpeg": "0.12.15",
+    "crypto-js": "4.2.0",
+    "fflate": "0.8.3",
+    "sql.js": "1.15.1"
+  },
+  "devDependencies": {
+    "vite": "8.3.5"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}
