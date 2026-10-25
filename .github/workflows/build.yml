@@ -21,6 +21,8 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts --registry=https://registry.npmjs.org
       - run: npm test
+      - name: Test official SDK downloader safety
+        run: python3 scripts/ape/test-download.py
       - name: Cache only our own verified binary and corresponding-source materials
         id: core-cache
         uses: actions/cache@v4
