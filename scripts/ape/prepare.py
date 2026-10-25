@@ -1,5 +1,6 @@
 from pathlib import Path
-import hashlib,json,zipfile,urllib.request,re,shutil
+import hashlib,json,zipfile,re,shutil
+from download import fetch_sdk
 root=Path(__file__).resolve().parents[2];work=root/'.ape-build';archive=root/'artifacts/ape/MAC_1343_SDK.zip'
 sha='3fd1c60f994daba536902f30b1bebc2235099c8b8a039d8b37d9d27d4827e0ca'
 target=work/'sdk'
@@ -18,7 +19,7 @@ if (prepared/'manifest.json').exists():
 else:
  if not archive.exists():
   archive.parent.mkdir(parents=True,exist_ok=True)
-  with urllib.request.urlopen('https://monkeysaudio.com/files/MAC_1343_SDK.zip',timeout=120) as r:archive.write_bytes(r.read())
+  fetch_sdk(archive)
  assert hashlib.sha256(archive.read_bytes()).hexdigest()==sha,'SDK checksum mismatch'
  with zipfile.ZipFile(archive) as z:
   for n in z.namelist():

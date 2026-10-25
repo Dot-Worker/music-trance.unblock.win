@@ -14,7 +14,7 @@ const apeFiles=['ape.js','ape.cjs','ape.wasm','ape-source.tar.gz','LICENSE.Monke
 if(apeManifest.files?.['MAC_1343_SDK.zip']&&apeManifest.files['MAC_1343_SDK.zip']!=='3fd1c60f994daba536902f30b1bebc2235099c8b8a039d8b37d9d27d4827e0ca')throw Error('Unexpected original SDK archive.');
 if(apeManifest.coreId!=='ape-normal-1'||Object.keys(apeManifest.files||{}).length!==apeFiles.length||apeFiles.some(f=>!/^([a-f0-9]{64})$/.test(apeManifest.files[f]||'')))throw Error('Incomplete APE binary/source manifest.');
 for(const file of apeFiles)if(sha(await readFile(`artifacts/ape/${file}`))!==apeManifest.files[file])throw Error(`APE integrity failure: ${file}`);
-for(const file of ['README.md','build.sh','package.py','patch.py','prepare.py','test.mjs','wrapper.cpp']){const path=`scripts/ape/${file}`;if(apeManifest.buildInputs?.[path]!==sha(await readFile(path)))throw Error(`APE recipe changed: ${path}`);}
+for(const file of ['README.md','build.sh','download.py','package.py','patch.py','prepare.py','test-download.py','test.mjs','wrapper.cpp']){const path=`scripts/ape/${file}`;if(apeManifest.buildInputs?.[path]!==sha(await readFile(path)))throw Error(`APE recipe changed: ${path}`);}
 await rm('public/vendor',{recursive:true,force:true});
 const layout=runtimeLayout();
 await mkdir(`public/${layout.apeDirectory}`,{recursive:true});
