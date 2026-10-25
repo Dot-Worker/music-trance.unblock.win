@@ -1,0 +1,8 @@
+node_modules/
+dist/
+public/vendor/
+*.log
+.core-build/
+artifacts/
+
+__pycache__/
